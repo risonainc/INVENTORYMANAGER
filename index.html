@@ -2,100 +2,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mobile Inventory Verification</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 10px;
-            margin: 0;
-            background-color: #f9f9f9;
-        }
-        h2 {
-            text-align: center;
-        }
-        .input-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            font-size: 16px;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
-        #reader {
-            width: 100%;
-            margin-top: 20px;
-        }
-    </style>
+  <title>Mobile Inventory Verification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, select, button, textarea { display: block; width: 100%; margin-bottom: 10px; padding: 10px; font-size: 16px; }
+    #summary { border: 1px solid #ccc; padding: 10px; margin-top: 20px; display: none; }
+    #nextBtn, #submitBtn, #printBtn { margin-top: 10px; }
+  </style>
 </head>
 <body>
-    <h2>Mobile Inventory Verification</h2>
+  <h2>Mobile Inventory Verification</h2>
+  <form id="inventoryForm">
+    <label>UPC:</label>
+    <input type="text" id="upc" required>
 
-    <div class="input-group">
-        <label for="upc">UPC:</label>
-        <input type="text" id="upc" name="upc">
-        <button onclick="startScan('upc')">Scan UPC</button>
-    </div>
+    <label>Item Name:</label>
+    <input type="text" id="itemName">
 
-    <div class="input-group">
-        <label for="location">Location:</label>
-        <input type="text" id="location" name="location">
-        <button onclick="startScan('location')">Scan Location</button>
-    </div>
+    <label>Brand:</label>
+    <input type="text" id="brand">
 
-    <div id="reader"></div>
+    <label>COO:</label>
+    <input type="text" id="coo">
 
-    <script>
-        let html5QrCode;
-        let currentField = "";
+    <label>C/D:</label>
+    <input type="text" id="cd">
 
-        function startScan(fieldId) {
-            currentField = fieldId;
-            document.getElementById("reader").innerHTML = "";
-            html5QrCode = new Html5Qrcode("reader");
-            Html5Qrcode.getCameras().then(devices => {
-                if (devices && devices.length) {
-                    let cameraId = devices[0].id;
-                    html5QrCode.start(
-                        cameraId,
-                        {
-                            fps: 10,
-                            qrbox: 250
-                        },
-                        qrCodeMessage => {
-                            document.getElementById(currentField).value = qrCodeMessage;
-                            html5QrCode.stop().then(() => {
-                                document.getElementById("reader").innerHTML = "";
-                            }).catch(err => {
-                                console.error("Failed to stop scanner", err);
-                            });
-                        },
-                        errorMessage => {
-                            // ignore scan errors
-                        }
-                    ).catch(err => {
-                        console.error("Unable to start scanning", err);
-                    });
-                }
-            }).catch(err => {
-                console.error("Camera access error", err);
-            });
-        }
-    </script>
+    <label>Box Breakdown:</label>
+    <input type="text" id="boxBreakdown">
+
+    <label>Expected Qty:</label>
+    <input type="number" id="expectedQty">
+
+    <label>Actual Qty:</label>
+    <input type="number" id="actualQty">
+
+    <label>Discrepancy Reason:</label>
+    <select id="discrepancyReason">
+      <option value="">Select</option>
+      <option value="Yes - There is a problem">Yes - There is a problem</option>
+      <option value="No - We made a mistake">No - We made a mistake</option>
+      <option value="Unsure - Need to investigate">Unsure - Need to investigate</option>
+    </select>
+
+    <label>Verified By:</label>
+    <input type="text" id="verifiedBy">
+
+    <label>Location Breakdown:</label>
+    <textarea id="locationBreakdown" placeholder="LOC 1: 10
+LOC 2: 20
+..."></textarea>
+
+    <button type="button" onclick="showSummary()">Show Summary</button>
+  </form>
+
+  <div id="summary">
+    <h3>Summary</h3>
+    <pre id="summaryText"></pre>
+    <button id="printBtn" onclick="window.print()">Print Summary</button>
+    <button id="submitBtn" onclick="submitData()">Submit</button>
+    <button id="nextBtn" onclick="resetForm()">Next Item</button>
+  </div>
+
+  <script>
+    function showSummary() {
+      const fields = ['upc','itemName','brand','coo','cd','boxBreakdown','expectedQty','actualQty','discrepancyReason','verifiedBy','locationBreakdown'];
+      let summary = '';
+      fields.forEach(id => {
+        const value = document.getElementById(id).value;
+        summary += id + ': ' + value + '\n';
+      });
+      document.getElementById('summaryText').textContent = summary;
+      document.getElementById('summary').style.display = 'block';
+    }
+
+    function submitData() {
+      const data = {
+        upc: document.getElementById('upc').value,
+        itemName: document.getElementById('itemName').value,
+        brand: document.getElementById('brand').value,
+        coo: document.getElementById('coo').value,
+        cd: document.getElementById('cd').value,
+        boxBreakdown: document.getElementById('boxBreakdown').value,
+        expectedQty: document.getElementById('expectedQty').value,
+        actualQty: document.getElementById('actualQty').value,
+        discrepancyReason: document.getElementById('discrepancyReason').value,
+        verifiedBy: document.getElementById('verifiedBy').value,
+        locationBreakdown: document.getElementById('locationBreakdown').value,
+        timestamp: new Date().toISOString(),
+        deviceInfo: navigator.userAgent
+      };
+
+      fetch("https://script.google.com/macros/s/AKfycbxgO8ay3SQXxIzNakPFnHHPeAQ1KpUvloRg6rf8EGV3i8URLib8hR_Vf1at9cq9XeNunA/exec", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      alert("✅ Submission successful!");
+      resetForm();
+    }
+
+    function resetForm() {
+      document.getElementById('inventoryForm').reset();
+      document.getElementById('summary').style.display = 'none';
+    }
+  </script>
 </body>
 </html>
