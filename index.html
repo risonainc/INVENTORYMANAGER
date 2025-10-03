@@ -4,95 +4,147 @@
 <head>
   <title>Mobile Inventory Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    input, select, button, textarea { display: block; width: 100%; margin-bottom: 10px; padding: 10px; font-size: 16px; }
-    #summary { border: 1px solid #ccc; padding: 10px; margin-top: 20px; display: none; }
-    #nextBtn, #submitBtn, #printBtn { margin-top: 10px; }
+    body { font-family: Arial, sans-serif; padding: 10px; }
+    input, select, button { font-size: 1.2em; margin: 5px 0; width: 100%; padding: 8px; }
+    .section { margin-bottom: 20px; }
+    #summary { display: none; border: 1px solid #ccc; padding: 10px; background: #f9f9f9; }
+    #html5-qrcode-scanner { width: 100% !important; }
   </style>
 </head>
 <body>
-  <h2>Mobile Inventory Verification</h2>
-  <form id="inventoryForm">
+  <h2>VALIDATE SCREEN</h2>
+  <div class="section">
     <label>UPC:</label>
-    <input type="text" id="upc" required>
-
-    <label>Item Name:</label>
-    <input type="text" id="itemName">
-
-    <label>Brand:</label>
-    <input type="text" id="brand">
-
+    <input type="text" id="upc">
+    <button onclick="startScanner('upc')">Scan UPC</button>
+  </div>
+  <div class="section">
     <label>COO:</label>
     <input type="text" id="coo">
-
-    <label>C/D:</label>
+    <label>C or D:</label>
     <input type="text" id="cd">
-
-    <label>Box Breakdown:</label>
+  </div>
+  <div class="section">
+    <label>Box Breakdown (e.g., 3×20, 1×10):</label>
     <input type="text" id="boxBreakdown">
-
-    <label>Expected Qty:</label>
+    <label>Expected Total Qty:</label>
     <input type="number" id="expectedQty">
-
-    <label>Actual Qty:</label>
+    <label>Actual Total Qty:</label>
     <input type="number" id="actualQty">
-
+  </div>
+  <div class="section">
     <label>Discrepancy Reason:</label>
-    <select id="discrepancyReason">
-      <option value="">Select</option>
+    <select id="discrepancy">
+      <option value="">-- Select --</option>
       <option value="Yes - There is a problem">Yes - There is a problem</option>
-      <option value="No - We made a mistake">No - We made a mistake</option>
-      <option value="Unsure - Need to investigate">Unsure - Need to investigate</option>
+      <option value="No - We made a mistake. I need to re-enter the breakdown">No - We made a mistake. I need to re-enter the breakdown</option>
+      <option value="Unsure - Need to investigate further">Unsure - Need to investigate further</option>
     </select>
+  </div>
 
-    <label>Verified By:</label>
-    <input type="text" id="verifiedBy">
+  <h2>PUTAWAY</h2>
+  <div class="section" id="locations">
+    <label>Location 1:</label><input type="text" id="loc1"><button onclick="startScanner('loc1')">Scan</button><input type="number" id="qty1" placeholder="Qty">
+    <label>Location 2:</label><input type="text" id="loc2"><button onclick="startScanner('loc2')">Scan</button><input type="number" id="qty2" placeholder="Qty">
+    <label>Location 3:</label><input type="text" id="loc3"><button onclick="startScanner('loc3')">Scan</button><input type="number" id="qty3" placeholder="Qty">
+    <label>Location 4:</label><input type="text" id="loc4"><button onclick="startScanner('loc4')">Scan</button><input type="number" id="qty4" placeholder="Qty">
+    <label>Location 5:</label><input type="text" id="loc5"><button onclick="startScanner('loc5')">Scan</button><input type="number" id="qty5" placeholder="Qty">
+    <label>Location 6:</label><input type="text" id="loc6"><button onclick="startScanner('loc6')">Scan</button><input type="number" id="qty6" placeholder="Qty">
+    <label>Location 7:</label><input type="text" id="loc7"><button onclick="startScanner('loc7')">Scan</button><input type="number" id="qty7" placeholder="Qty">
+    <label>Location 8:</label><input type="text" id="loc8"><button onclick="startScanner('loc8')">Scan</button><input type="number" id="qty8" placeholder="Qty">
+    <label>Location 9:</label><input type="text" id="loc9"><button onclick="startScanner('loc9')">Scan</button><input type="number" id="qty9" placeholder="Qty">
+  </div>
 
-    <label>Location Breakdown:</label>
-    <textarea id="locationBreakdown" placeholder="LOC 1: 10
-LOC 2: 20
-..."></textarea>
-
-    <button type="button" onclick="showSummary()">Show Summary</button>
-  </form>
+  <button onclick="showSummary()">Show Summary</button>
 
   <div id="summary">
     <h3>Summary</h3>
     <pre id="summaryText"></pre>
-    <button id="printBtn" onclick="window.print()">Print Summary</button>
-    <button id="submitBtn" onclick="submitData()">Submit</button>
-    <button id="nextBtn" onclick="resetForm()">Next Item</button>
+    <button onclick="submitData()">Submit & Next</button>
   </div>
 
+  <div id="scanner" style="display:none;"></div>
+
   <script>
-    function showSummary() {
-      const fields = ['upc','itemName','brand','coo','cd','boxBreakdown','expectedQty','actualQty','discrepancyReason','verifiedBy','locationBreakdown'];
-      let summary = '';
-      fields.forEach(id => {
-        const value = document.getElementById(id).value;
-        summary += id + ': ' + value + '\n';
+    let currentScanField = "";
+
+    function startScanner(fieldId) {
+      currentScanField = fieldId;
+      document.getElementById("scanner").style.display = "block";
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+          let cameraId = devices[0].id;
+          let html5QrCode = new Html5Qrcode("scanner");
+          html5QrCode.start(
+            cameraId,
+            { fps: 10, qrbox: 250 },
+            qrCodeMessage => {
+              document.getElementById(currentScanField).value = qrCodeMessage;
+              html5QrCode.stop().then(() => {
+                document.getElementById("scanner").innerHTML = "";
+                document.getElementById("scanner").style.display = "none";
+              });
+            },
+            errorMessage => {}
+          ).catch(err => {});
+        }
       });
-      document.getElementById('summaryText').textContent = summary;
-      document.getElementById('summary').style.display = 'block';
+    }
+
+    function showSummary() {
+      let expected = parseInt(document.getElementById("expectedQty").value) || 0;
+      let actual = parseInt(document.getElementById("actualQty").value) || 0;
+      let locationTotal = 0;
+      for (let i = 1; i <= 9; i++) {
+        locationTotal += parseInt(document.getElementById("qty" + i).value) || 0;
+      }
+
+      let summary = `
+UPC: ${document.getElementById("upc").value}
+COO: ${document.getElementById("coo").value}
+C/D: ${document.getElementById("cd").value}
+Box Breakdown: ${document.getElementById("boxBreakdown").value}
+Expected Qty: ${expected}
+Actual Qty: ${actual}
+Discrepancy Reason: ${document.getElementById("discrepancy").value}
+Location Total Qty: ${locationTotal}
+      `;
+      for (let i = 1; i <= 9; i++) {
+        let loc = document.getElementById("loc" + i).value;
+        let qty = document.getElementById("qty" + i).value;
+        if (loc || qty) {
+          summary += `Location ${i}: ${loc} - Qty: ${qty}
+`;
+        }
+      }
+
+      if (actual !== locationTotal) {
+        alert("Warning: Actual Qty and Location Total do not match.");
+      }
+
+      document.getElementById("summaryText").textContent = summary;
+      document.getElementById("summary").style.display = "block";
     }
 
     function submitData() {
-      const data = {
-        upc: document.getElementById('upc').value,
-        itemName: document.getElementById('itemName').value,
-        brand: document.getElementById('brand').value,
-        coo: document.getElementById('coo').value,
-        cd: document.getElementById('cd').value,
-        boxBreakdown: document.getElementById('boxBreakdown').value,
-        expectedQty: document.getElementById('expectedQty').value,
-        actualQty: document.getElementById('actualQty').value,
-        discrepancyReason: document.getElementById('discrepancyReason').value,
-        verifiedBy: document.getElementById('verifiedBy').value,
-        locationBreakdown: document.getElementById('locationBreakdown').value,
-        timestamp: new Date().toISOString(),
-        deviceInfo: navigator.userAgent
+      let data = {
+        upc: document.getElementById("upc").value,
+        coo: document.getElementById("coo").value,
+        cd: document.getElementById("cd").value,
+        boxBreakdown: document.getElementById("boxBreakdown").value,
+        expectedQty: document.getElementById("expectedQty").value,
+        actualQty: document.getElementById("actualQty").value,
+        discrepancy: document.getElementById("discrepancy").value,
+        locations: []
       };
+      for (let i = 1; i <= 9; i++) {
+        data.locations.push({
+          location: document.getElementById("loc" + i).value,
+          qty: document.getElementById("qty" + i).value
+        });
+      }
 
       fetch("https://script.google.com/macros/s/AKfycbxgO8ay3SQXxIzNakPFnHHPeAQ1KpUvloRg6rf8EGV3i8URLib8hR_Vf1at9cq9XeNunA/exec", {
         method: "POST",
@@ -102,12 +154,8 @@ LOC 2: 20
       });
 
       alert("✅ Submission successful!");
-      resetForm();
-    }
-
-    function resetForm() {
-      document.getElementById('inventoryForm').reset();
-      document.getElementById('summary').style.display = 'none';
+      document.querySelectorAll("input, select").forEach(el => el.value = "");
+      document.getElementById("summary").style.display = "none";
     }
   </script>
 </body>
